@@ -10,7 +10,7 @@
 ✅ Production-safe Telegraf patterns
 
 ```
-git clone https://github.com/BidyutRoy2/Telegrambot.git & cd Telegrambot
+git clone https://github.com/BidyutRoy2/Telegrambot.git && cd Telegrambot
 ```
 
 ```
