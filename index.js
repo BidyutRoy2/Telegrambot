@@ -1,6 +1,8 @@
 import { Telegraf } from "telegraf";
 import Database from "better-sqlite3";
 import dotenv from "dotenv";
+import fs from "fs";
+import cron from "node-cron";
 
 dotenv.config();
 
@@ -24,31 +26,112 @@ CREATE TABLE IF NOT EXISTS users (
 )
 `).run();
 
+/* ================= HELPERS ================= */
+function referralLink(ctx, userId) {
+  return `https://t.me/${ctx.botInfo.username}?start=${userId}`;
+}
+
+function showUserSummary(ctx) {
+  const user = db.prepare(
+    "SELECT * FROM users WHERE userId=?"
+  ).get(ctx.from.id);
+
+  if (!user || !user.wallet) return;
+
+  ctx.reply(
+`📊 *Your Airdrop Summary*
+
+👤 User ID: ${user.userId}
+👤 Username: @${user.username || "N/A"}
+💼 Wallet: \`${user.wallet}\`
+👥 Referrals: *${user.referrals}*
+
+🔗 *Your Referral Link*
+${referralLink(ctx, user.userId)}`,
+{
+  parse_mode: "Markdown",
+  reply_markup: {
+    inline_keyboard: [
+      [{ text: "🔄 Refresh Stats", callback_data: "refresh_stats" }]
+    ]
+  }
+});
+}
+
+/* ================= EXPORT FILES ================= */
+function exportUsersToTxt() {
+  const users = db.prepare(
+    "SELECT * FROM users WHERE wallet IS NOT NULL"
+  ).all();
+
+  let output = "=== AIRDROP COMPLETED USERS ===\n";
+  output += `Updated: ${new Date().toUTCString()}\n\n`;
+
+  users.forEach(u => {
+    output +=
+`UserID: ${u.userId}
+Username: ${u.username || "N/A"}
+Wallet: ${u.wallet}
+Referrals: ${u.referrals}
+------------------------------\n`;
+  });
+
+  fs.writeFileSync("airdrop_users.txt", output);
+}
+
+function exportLeaderboard() {
+  const users = db.prepare(`
+    SELECT userId, username, referrals
+    FROM users
+    WHERE referrals > 0
+    ORDER BY referrals DESC
+    LIMIT 100
+  `).all();
+
+  let output = "=== AIRDROP REFERRAL LEADERBOARD ===\n";
+  output += `Updated: ${new Date().toUTCString()}\n\n`;
+  output += "Rank | UserID     | Username        | Referrals\n";
+  output += "-----------------------------------------------\n";
+
+  users.forEach((u, i) => {
+    output +=
+`${String(i + 1).padEnd(4)} | ` +
+`${String(u.userId).padEnd(10)} | ` +
+`${(u.username || "N/A").padEnd(15)} | ` +
+`${u.referrals}\n`;
+  });
+
+  output += "-----------------------------------------------\n";
+  fs.writeFileSync("leaderboard.txt", output);
+}
+
+/* Auto export every 15 minutes */
+cron.schedule("*/15 * * * *", () => {
+  exportUsersToTxt();
+  exportLeaderboard();
+});
+
 /* ================= TASK MESSAGE ================= */
 function sendAirdropTasks(ctx) {
   ctx.reply(
-`✅ That‘s correct! (Powered By HiddenGem)
+`✅ That‘s Correct!
 
-➡️ *Welcome to our Official GiveWay Airdrop*
+➡️ *Official Giveaway Airdrop*
 
-⬇️ Complete the tasks below to earn Free Rewards.
+⬇️ Join our Telegram Group & Channel using the Buttons Below. 
 
-━━━━━━━━━━━━━━━━━━
-*HiddenGem*
-━━━━━━━━━━━━━━━━━━
+➡️ Then Click **Done**.
 
-⚠️ Never spend money on airdrops.
-
-👇 Join all platforms using the buttons below, then click **Done**.`,
+⚠️ Never spend money on Airdrops.`,
 {
   parse_mode: "Markdown",
   reply_markup: {
     inline_keyboard: [
       [{ text: "🔗 Telegram Group", url: process.env.TG_GROUP }],
       [{ text: "🔗 Telegram Channel", url: process.env.TG_CHANNEL }],
+      [{ text: "💬 Support Group", url: process.env.SUPPORT }],
       [{ text: "🐦 Twitter", url: process.env.TWITTER }],
-      [{ text: "▶️ YouTube", url: process.env.YOUTUBE }],
-      [{ text: "💬 Support", url: process.env.SUPPORT }],
+      [{ text: "▶️ YouTube", url: process.env.YOUTUBE }],      
       [{ text: "✅ Done", callback_data: "tasks_done" }]
     ]
   }
@@ -59,7 +142,6 @@ function sendAirdropTasks(ctx) {
 bot.start((ctx) => {
   const refId = ctx.startPayload ? parseInt(ctx.startPayload) : null;
   const userId = ctx.from.id;
-  const username = ctx.from.username || "";
 
   const exists = db.prepare(
     "SELECT userId FROM users WHERE userId=?"
@@ -69,7 +151,7 @@ bot.start((ctx) => {
     db.prepare(`
       INSERT INTO users (userId, username, referredBy)
       VALUES (?, ?, ?)
-    `).run(userId, username, refId);
+    `).run(userId, ctx.from.username || "", refId);
 
     if (refId) {
       db.prepare(`
@@ -82,12 +164,11 @@ bot.start((ctx) => {
   captchaUsers.add(userId);
 
   ctx.reply(
-`➡️ Before we start the airdrop, please prove you are human.
+`➡️ Human Verification Required
 
-Please answer:
-*99 + 10 =*
+Solve Captcha : *99 + 10 =*
 
-Click **Continue** before typing.`,
+Click **Continue** First.`,
 {
   parse_mode: "Markdown",
   reply_markup: {
@@ -98,49 +179,76 @@ Click **Continue** before typing.`,
 });
 });
 
-/* ================= CAPTCHA CONTINUE ================= */
+/* ================= CAPTCHA ================= */
 bot.action("captcha_continue", (ctx) => {
   ctx.answerCbQuery();
-  ctx.reply("✍️ Please type your answer now:");
+  ctx.reply("✍️ Type Right Answer:");
 });
 
-/* ================= CAPTCHA ANSWER (FIXED) ================= */
-bot.on("text", (ctx) => {
-  // ONLY handle users who are still solving captcha
+bot.hears(/^\d+$/, (ctx) => {
   if (!captchaUsers.has(ctx.from.id)) return;
-
-  // Ignore wallet-like text during captcha
-  if (/^0x[a-fA-F0-9]{40}$/.test(ctx.message.text)) return;
 
   if (ctx.message.text.trim() === VERIFIED_ANSWER) {
     captchaUsers.delete(ctx.from.id);
     sendAirdropTasks(ctx);
-    return; // 🔥 IMPORTANT: stop here, allow other handlers
+  } else {
+    ctx.reply("❌ Wrong answer. Try again.");
   }
-
-  ctx.reply("❌ Wrong answer. Try again: 99 + 10 = ?");
 });
 
-/* ================= TASK DONE ================= */
-bot.action("tasks_done", (ctx) => {
+/* ================= DONE BUTTON (JOIN CHECK) ================= */
+bot.action("tasks_done", async (ctx) => {
   ctx.answerCbQuery();
-  taskCompleted.add(ctx.from.id);
+  const userId = ctx.from.id;
 
-  ctx.reply(
-`✅ Tasks confirmed!
+  try {
+    const group = await ctx.telegram.getChatMember(
+      process.env.TG_GROUP_USERNAME,
+      userId
+    );
 
-📥 Now send your *BSC (BEP-20)* wallet address.
+    const channel = await ctx.telegram.getChatMember(
+      process.env.TG_CHANNEL_USERNAME,
+      userId
+    );
 
-Example:
-\`0x1234abcd5678ef901234abcd5678ef901234abcd\``,
+    const ok = ["member", "administrator", "creator"];
+
+    if (!ok.includes(group.status) || !ok.includes(channel.status)) {
+      return ctx.reply(
+`❌ Tasks not completed!
+
+✅ Please: Join Telegram Group & Channel
+
+✅ Then Click **Done** Again.`
+      );
+    }
+
+    taskCompleted.add(userId);
+
+    ctx.reply(
+`✅ Tasks Verified!
+
+📥 Now send your *BSC (BEP-20)* wallet address.`,
 { parse_mode: "Markdown" }
-  );
+    );
+
+  } catch (err) {
+    console.error("Join check error:", err);
+    ctx.reply(
+`⚠️ Verification failed.
+
+Make sure:
+• Bot is ADMIN
+• Group & Channel are PUBLIC`
+    );
+  }
 });
 
 /* ================= WALLET SUBMISSION ================= */
-bot.hears(/0x[a-fA-F0-9]{40}/, (ctx) => {
+bot.hears(/^0x[a-fA-F0-9]{40}$/, (ctx) => {
   if (!taskCompleted.has(ctx.from.id)) {
-    return ctx.reply("❌ Complete tasks and click Done first.");
+    return ctx.reply("❌ Complete Telegram tasks first.");
   }
 
   try {
@@ -149,22 +257,21 @@ bot.hears(/0x[a-fA-F0-9]{40}/, (ctx) => {
       WHERE userId=?
     `).run(ctx.message.text, ctx.from.id);
 
-    ctx.reply("✅ Wallet saved successfully!");
+    ctx.reply("✅ Wallet Saved Successfully!");
+    showUserSummary(ctx);
+
   } catch {
-    ctx.reply("❌ This wallet address is already used.");
+    ctx.reply("❌ Wallet already used.");
   }
 });
 
-/* ================= REFERRALS ================= */
-bot.command("referrals", (ctx) => {
-  const user = db.prepare(
-    "SELECT referrals FROM users WHERE userId=?"
-  ).get(ctx.from.id);
-
-  ctx.reply(`👥 Your referrals: ${user?.referrals || 0}`);
+/* ================= REFRESH ================= */
+bot.action("refresh_stats", (ctx) => {
+  ctx.answerCbQuery("Refreshing...");
+  showUserSummary(ctx);
 });
 
-/* ================= ADMIN STATS ================= */
+/* ================= ADMIN ================= */
 bot.command("stats", (ctx) => {
   if (ctx.from.id != process.env.ADMIN_ID) return;
 
