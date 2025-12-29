@@ -1,13 +1,13 @@
 # Airdrop Telegram Bot
-✅ Human verification (captcha)
-✅ Task buttons
-✅ Wallet submission (fixed)
-✅ Show user data + referral link
-✅ Refresh stats button
-✅ Auto-export completed users → airdrop_users.txt (every 15 min)
-✅ Auto leaderboard → leaderboard.txt (every 15 min)
-✅ SQLite only (no MongoDB)
-✅ Production-safe Telegraf patterns
+- ✅ Human verification (captcha)
+- ✅ Task buttons
+- ✅ Wallet submission (fixed)
+- ✅ Show user data + referral link
+- ✅ Refresh stats button
+- ✅ Auto-export completed users → airdrop_users.txt (every 15 min)
+- ✅ Auto leaderboard → leaderboard.txt (every 15 min)
+- ✅ SQLite only (no MongoDB)
+- ✅ Production-safe Telegraf patterns
 
 ```
 git clone https://github.com/BidyutRoy2/Telegrambot.git && cd Telegrambot
