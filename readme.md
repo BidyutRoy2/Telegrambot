@@ -20,8 +20,8 @@ npm install
 ```
 sudo apt install sqlite3 -y
 ```
-
-Create New Bot @BotFather & Copy Access Token
+- Create New Bot @BotFather & Copy Access Token
+- Modify and Setup Your Details in .env
 ```
 nano .env
 ```
