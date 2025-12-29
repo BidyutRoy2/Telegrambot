@@ -1,0 +1,33 @@
+{
+  "name": "telegram-airdrop-bot",
+  "version": "1.0.0",
+  "description": "Telegram Airdrop Bot with captcha, tasks, referral system, wallet submit, auto TXT export (SQLite)",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "telegram",
+    "airdrop",
+    "bot",
+    "crypto",
+    "referral",
+    "sqlite",
+    "captcha",
+    "bsc",
+    "nodejs"
+  ],
+  "author": "HiddenGem",
+  "license": "MIT",
+
+  "dependencies": {
+    "better-sqlite3": "^12.5.0",
+    "dotenv": "^17.2.3",
+    "node-cron": "^3.0.3",
+    "telegraf": "^4.16.3"
+  },
+    "engines": {
+    "node": ">=18.0.0"
+  }
+}
