@@ -1,4 +1,4 @@
-# Airdrop Telegram Bot
+# Professional Airdrop Telegram Bot
 - ✅ Human verification (captcha)
 - ✅ Task buttons
 - ✅ Wallet submission (fixed)
@@ -36,3 +36,7 @@ npm start
 sqlite3 -header -column db.sqlite "SELECT * FROM users;"
 ```
 
+## 📁 FILES THIS CREATES AUTOMATICALLY - Telegrambot Folder
+- db.sqlite → live database
+- airdrop_users.txt → completed users (15 min)
+- leaderboard.txt → referral leaderboard (15 min)
