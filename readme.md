@@ -20,18 +20,28 @@ npm install
 ```
 sudo apt install sqlite3 -y
 ```
-- Create New Bot @BotFather & Copy Access Token
-- Modify and Setup Your Details in .env
+- ### Create New Bot @BotFather Copy Access Token and Make Admin Bot in Your Channel & Group
 ```
 nano .env
 ```
-Make Admin Bot in Your Channel & Group 
-
+- ### Modify and Setup Your Details in .env
+```
+BOT_TOKEN=
+ADMIN_ID=
+TG_GROUP=https://t.me/
+TG_CHANNEL=https://t.me/
+TWITTER=https://x.com/
+YOUTUBE=https://www.youtube.com/
+SUPPORT=https://t.me/
+TG_GROUP_USERNAME=@
+TG_CHANNEL_USERNAME=@
+```
+### Run Bot
 ```
 npm start
 ```
 
-## Check User Data 
+### Check User Data 
 ```
 sqlite3 -header -column db.sqlite "SELECT * FROM users;"
 ```
